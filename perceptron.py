@@ -29,30 +29,33 @@ def hard_threshold(x):
 
 
 def update_w(x, w, t, learning_rate):
-    o = hard_threshold(np.dot(w, x))  # because in my dataset: t in (0, 1)
-    x_m = np.transpose(learning_rate * (t - o) * x)
-    return (1, w + x_m) if o != t else (0, w)
+    o = hard_threshold(np.dot(w.transpose(), x))
+    if o != t:
+        x_m = learning_rate * (t - o) * x
+        return 1, w + x_m
+    else:
+        return 0, w
+    # return (1, w + x_m) if o != t else (0, w)
 
-# def set_initial_w(shape=(1, 1)):
-#     return np.random.rand(shape)
 
 
 def learn(X, y, learning_rate):
     days, attributes = X.shape
     updated = np.ones(days)
-    W = np.random.rand(X.shape[0], X.shape[1])
+    W = np.random.random((attributes, 1))
     # print("W before training: \n{}".format(W))
     iteration = 0
     while updated.any() == 1:
         iteration += 1
         i = np.random.randint(0, days)
-        updated[i], W[i] = update_w(np.expand_dims(X[i], axis=1), np.expand_dims(W[i], axis=0), y[i], learning_rate)
+        x_temp = np.reshape(X[i], (len(X[i]), 1))
+        updated[i], W = update_w(x_temp, W, y[i], learning_rate)
     # print("W after {it} iteration(s): \n{w}".format(it=iteration, w=W))
     return iteration, W
 
 
 if __name__ == '__main__':
-    learning_rates = np.linspace(0.001, 0.07, 1000)
+    learning_rates = np.linspace(0.001, 0.03, 1000)
     iterations = []
     for learning_rate in learning_rates:
         iteration, W = learn(X, y, learning_rate)
