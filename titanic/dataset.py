@@ -1,7 +1,22 @@
+#!/usr/bin/env python
+"""
+This file contains an implementation of a perceptron and a training over the dataset in the dataset.py file.
+
+As the plot shows it seems that the optimal learning rate over the number of iterations is > 0.04.
+"""
+
+__author__ = "Giovanni Cavallin, mat. 1206693, Alberto Bezzon, Alberto Gallinaro"
+__copyright__ = "Giovanni Cavallin, mat. 1206693, Alberto Bezzon, Alberto Gallinaro"
+__license__ = "MIT"
+__version__ = "1.0"
+__maintainer__ = "Giovanni Cavallin"
+__email__ = "giovanni.cavallin.1@studenti.unipd.it"
+__status__ = "Production"
+
+import sklearn.preprocessing as sk_prep
 import pandas as pd
 import os
 import numpy as np
-import sklearn.preprocessing as sk_prep
 
 passenger_cat = {
     "1": 0,
@@ -18,6 +33,17 @@ embarked_cat = {
     "Q": 1,  # Queenstown
     "S": 2  # Southampton
 }
+
+
+def average(arr):
+    support = np.zeros((len(arr)))
+    i = 0
+    for idx, value in enumerate(arr):
+        if 'nan' not in str(value):
+            support[i] = value
+            i += 1
+    support = support[1:i]
+    return np.average(support)
 
 
 def one_hot(cls, classes=1):
@@ -83,13 +109,15 @@ def age_category(age, average=-1):
     return -1
 
 
-def fare_category(fare):
+def fare_category(fare, average = -1):
     """
     We divided the fare into 4 sections which correspond to the classes, almost. We look at some historical
     site in which the costs were reported and we followed it looking at the dataset
     :param fare: float, cost of
     :return:
     """
+    if 'nan' in str(fare):
+        fare = average
     if fare < 10:
         return 0
     elif fare < 30:
@@ -164,81 +192,118 @@ def embarked_category(emb):
         return -1
 
 
-if __name__ == '__main__':
-    # get the current path
-    path = os.getcwd()
 
-    # Passenger 0, nessuna correzione
-    # Survived 1, è la nostra y
-    # Pclass 2, 3 classi, codifica OneHot
-    # Name 3, si elimina
-    # Sex 4, classi, codifica OneHot (modifica in 0/1)
-    # Age 5, cluster
-    # SibSp 6, togliamo perché: abbiamo ritenuto che non fosse influente perché avere un fratello non
-    # comporterebbe una maggiore probabilit' di salvarsi
-    # Parch 7, normalizzazione, centramento. Non prendiamo in considerazione la standardizzazione perchè abbiamo
-    # non abbiamo notato particolari corrispondenze tra il numero dei figli e la probabilità di salvarsi,
-    # soprattutto dato il sesso
-    # Ticket 8, togliamo
-    # Fare 9, teniamo, clusterizzare
-    # Cabin 10, togliamo come visto a lezione
-    # Embarked 11, lo teniamo per dopo.
+# get the current path
+path = "titanic"
 
-    # create path/to/dataset
-    train_path = os.path.join(path, "train.csv")
-    test_path = os.path.join(path, "test.csv")
-    res_test_path = os.path.join('gender_submission.csv')
+# Passenger 0, nessuna correzione
+# Survived 1, è la nostra y
+# Pclass 2, 3 classi, codifica OneHot
+# Name 3, si elimina
+# Sex 4, classi, codifica OneHot (modifica in 0/1)
+# Age 5, cluster
+# SibSp 6, togliamo perché: abbiamo ritenuto che non fosse influente perché avere un fratello non
+# comporterebbe una maggiore probabilit' di salvarsi
+# Parch 7, normalizzazione, centramento. Non prendiamo in considerazione la standardizzazione perchè abbiamo
+# non abbiamo notato particolari corrispondenze tra il numero dei figli e la probabilità di salvarsi,
+# soprattutto dato il sesso
+# Ticket 8, togliamo
+# Fare 9, teniamo, clusterizzare
+# Cabin 10, togliamo come visto a lezione
+# Embarked 11, lo teniamo per dopo.
 
-    # create pandas object with dataset
-    train_set = pd.read_csv(train_path)
-    test_set = pd.read_csv(test_path)
-    res_test_set = pd.read_csv(res_test_path, usecols=[1])
+# per il test set:
+# PassengerId 0,
+# Pclass 1,
+# Name 2,
+# Sex 3,
+# Age 4,
+# SibSp 5,
+# Parch 6,
+# Ticket 7,
+# Fare 8,
+# Cabin 9,
+# Embarked 10
+# create path/to/dataset
+train_path = os.path.join(path, "train.csv")
+test_path = os.path.join(path, "test.csv")
+res_test_path = os.path.join(path, "gender_submission.csv")
 
-    # elaboration of dataset
-    # Pandas DataFrame to Numpy. Then transpose it to have only a feature for each column
-    X = train_set.values.transpose()
+# create pandas object with dataset
+train_set = pd.read_csv(train_path)
+test_set = pd.read_csv(test_path)
+res_test_set = pd.read_csv(res_test_path)
 
-    # passenger classes
-    for idx, value in enumerate(X[2]):
-        X[2][idx] = class_category(value)
-    classes = one_hot(X[2], num_passenger_cat)
+# elaboration of dataset
+# Pandas DataFrame to Numpy. Then transpose it to have only a feature for each column
+T = train_set.values.transpose()
+T_t = test_set.values.transpose()
 
-    # sex classes
-    for idx, value in enumerate(X[4]):
-        X[4][idx] = sex_category(value)
-    sexes = one_hot(X[4], 2)
+# PASSENGER CLASSES
+# train
+for idx, value in enumerate(T[2]):
+    T[2][idx] = class_category(value)
+train_classes = one_hot(T[2], num_passenger_cat)
+# test
+for idx, value in enumerate(T_t[1]):
+    T_t[1][idx] = class_category(value)
+test_classes = one_hot(T_t[1], num_passenger_cat)
 
-    # age classes
-    # we want to substitute the average age of the known people to the unkwown. So we need to prune all
-    # the nan values in order to retrieve the average and calculate it
-    support = np.zeros((len(X[5])))
-    i = 0
-    for idx, value in enumerate(X[5]):
-        if 'nan' not in str(value):
-            support[i] = value
-            i += 1
-    support = support[1:i]
-    average = np.average(support)
+# SEX CLASSES
+# train
+for idx, value in enumerate(T[4]):
+    T[4][idx] = sex_category(value)
+train_sexes = one_hot(T[4], 2)
+# test
+for idx, value in enumerate(T_t[3]):
+    T_t[3][idx] = sex_category(value)
+test_sexes = one_hot(T_t[3], 2)
 
-    for idx, value in enumerate(X[5]):  # Age
-        X[5][idx] = age_category(value, average)
+# AGE CLASSES
+# train
+# we want to substitute the average age of the known people to the unkwown. So we need to prune all
+# the nan values in order to retrieve the average and calculate it
+for idx, value in enumerate(T[5]):  # Age
+    T[5][idx] = age_category(value, average(T[5]))
 
-    ages = one_hot(X[5], 5)
+train_ages = one_hot(T[5], 5)
 
-    # parent/children classes 7
-    parch = [X[7]]
-    normalizer = sk_prep.Normalizer()
-    normalizer.fit(parch)
-    parch = normalizer.transform(parch)
+# test
+for idx, value in enumerate(T_t[4]):  # Age
+    T_t[4][idx] = age_category(value, average(T_t[4]))
 
-    # fare classes
-    for idx, value in enumerate(X[9]):  # Fare
-        X[9][idx] = fare_category(value)
-    fares = one_hot(X[9], 4)
+test_ages = one_hot(T_t[4], 5)
 
-    # # Now delete the y value from dataset so we can separate the features from the result
-    y = np.array(X[1])
-    y = np.resize(y, (len(X[1]), 1))
+# PARENT/CHILDREN CLASSES
+# train
+train_parch = [T[7]]
+normalizer = sk_prep.Normalizer()
+normalizer.fit(train_parch)
+train_parch = normalizer.transform(train_parch)
+# test
+test_parch = [T_t[6]]
+normalizer = sk_prep.Normalizer()
+normalizer.fit(test_parch)
+test_parch = normalizer.transform(test_parch)
 
-    # Now we create our dataset
-    X = np.concatenate((classes.T, ages.T, sexes.T, parch, fares.T)).T
+# FARE CLASSES
+# train
+for idx, value in enumerate(T[9]):  # Fare
+    T[9][idx] = fare_category(value)
+train_fares = one_hot(T[9], 4)
+# test
+for idx, value in enumerate(T_t[8]):  # Fare
+    T_t[8][idx] = fare_category(value, average(T_t[8]))
+test_fares = one_hot(T_t[8], 4)
+
+# # Now we take the y value from dataset
+y = T[1]
+
+# Now we create our dataset
+X = np.concatenate((train_classes.T, train_ages.T, train_sexes.T, train_parch, train_fares.T)).T
+X_t = np.concatenate((test_classes.T, test_ages.T, test_sexes.T, test_parch, test_fares.T)).T
+
+y_t = res_test_set.values
+y_t = y_t.T
+y_t = y_t[1]
+y_t = y_t.T

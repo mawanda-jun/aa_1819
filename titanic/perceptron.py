@@ -29,6 +29,7 @@ def real_plot(X, W, y):
             count += 1
     return count
 
+
 def hard_threshold(x):
     """
     Returns an hard threshold which returns 0 if sign = -1 and 1 otherwise.
@@ -36,7 +37,7 @@ def hard_threshold(x):
     :param x: + or - 1
     :return: 1 for positive, 0 for negative
     """
-    return 0 if np.sign(x) <= 0 else 1
+    return -1 if np.sign(x) < 0 else 1
 
 
 def update_w(x, w, t, learning_rate):
@@ -58,31 +59,34 @@ def learn(X, y, learning_rate):
     W = np.random.random((features, 1))
     # print("W before training: \n{}".format(W))
     iteration = 0
-    y_ax = np.linspace(0, len(y), len(y))
+
     while updated.any() == 1:
         iteration += 1
         i = np.random.randint(0, values)
         x_temp = np.reshape(X[i], (len(X[i]), 1))
         updated[i], W = update_w(x_temp, W, y[i], learning_rate)
-        # plt.plot(1, real_plot(X, W, y))
-        # plt.pause(0.05)
-    # plt.show()
-    # print("W after {it} iteration(s): \n{w}".format(it=iteration, w=W))
+        y_f = np.dot(X, W)
+        for idx, value in enumerate(y_f):
+            y_f[idx] = hard_threshold(value)
+        y_f = y_f.T
+        y_t = np.reshape(y, (len(y), 1)).T
+        # print(f1_score(y_t, y_f))
+        print(np.linalg.norm(y_t - y_f) / np.linalg.norm(y_t))
     return iteration, W
 
 
 if __name__ == '__main__':
-    iteration, W = learn(X, y, 0.00004)
-    # learning_rates = np.linspace(0.001, 0.035, 3)
-    # iterations = []
-    # for learning_rate in learning_rates:
-    #     iteration, W = learn(X, y, learning_rate)
-    #     iterations.append(iteration)
-    # plt.plot(learning_rates, iterations)
-    # plt.xlabel("Learning rate")
-    # plt.ylabel("Iterations")
-    # plt.show()
-    print("W.shape: {w}\nX.transpose.shape(): {x}\ny.shape: {y}".format(w=W.shape, x=X.transpose().shape, y=y.shape))
+    # iteration, W = learn(T, y, 0.00004)
+    learning_rates = np.linspace(0.01, 0.035, 3)
+    iterations = []
+    for learning_rate in learning_rates:
+        iteration, W = learn(X, y, learning_rate)
+        iterations.append(iteration)
+    plt.plot(learning_rates, iterations)
+    plt.xlabel("Learning rate")
+    plt.ylabel("Iterations")
+    plt.show()
+    print("W.shape: {w}\nX.transpose.shape(): {x}\ny.shape: {y}".format(w=W.shape, x=T.transpose().shape, y=y.shape))
     # print(iterations)
 
 
