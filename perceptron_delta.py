@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 """
+This file contains an implementation of a perceptron with sigmoid activation function and delta rule for gradient descend
+and a training over the dataset in the dataset.py file.
 """
 
 __author__ = "Giovanni Cavallin, mat. 1206693"
@@ -10,129 +12,83 @@ __maintainer__ = "Giovanni Cavallin"
 __email__ = "giovanni.cavallin.1@studenti.unipd.it"
 __status__ = "Production"
 
-# from dataset import X, y
+from titanic.dataset import X, y
 import numpy as np
 import matplotlib.pyplot as plt
+from sklearn.metrics import f1_score
 
 
-# def hard_threshold(x):
-#     """
-#     Returns an hard threshold which returns 0 if sign = -1 and 1 otherwise.
-#     This let the combination of multiple perceptron with uniform input
-#     :param x: + or - 1
-#     :return: 1 for positive, 0 for negative
-#     """
-#     return 0 if np.sign(x) < 0 else 1
+def sigmoid(x):
+    """
+    Numerically-stable sigmoid function. As the PC cannot handle too little/big numbers I "cheated" considering the
+    sigmoid(>20) = 1 and sigmoid(<20) = 0
+    :param x: the value to evaluate with sigmoid function
+    :return: 1 or 0
+    """
+    if x > 20:
+        return 1
+    elif x < -20:
+        return 0
+    return 1 / (1 + np.exp(-x))
 
 
-# def update_w(x, w, t, learning_rate):
-#     o = hard_threshold(np.dot(w, x))  # because in my dataset: t in (0, 1)
-#     x_m = np.transpose(learning_rate * (t - o) * x)
-#     return (1, w + x_m) if o != t else (0, w)
-
-# def set_initial_w(shape=(1, 1)):
-#     return np.random.rand(shape)
-
-def sigmoid(y, derivative=False):
-    sigm = np.divide(1., (1. + np.exp(-y)))
-    if derivative:
-        return sigm * (1. - sigm)
-    return sigm
-
-
-def update_delta_w_linear(x, y, w, delta_w, learning_rate):
-    o = np.dot(w, x)
-    u = learning_rate*(y-o)*x
-    if np.linalg.norm(u, 4) < 10**-5:
-        return False, delta_w
+def update_w_delta(X, W, delta_W, y_t, learning_rate):
+    """
+    Update w with the delta gradient descend rule and a sigmoid activation.
+    :param X:
+    :param W:
+    :param delta_W: vector with gradients
+    :param y_t: ground truth
+    :param learning_rate:
+    :return: 1, W + delta_W if the value is not correct yet, 0, W otherwise
+    """
+    o = sigmoid(np.dot(W.transpose(), X))
+    for idx, value in enumerate(X):
+        delta_W[idx] = delta_W[idx] + \
+                       learning_rate * (y_t - o) * (1 - o) * X[idx]
+    if o != y_t:
+        return 1, W + delta_W
     else:
-        delta_w = delta_w + u
-        return True, delta_w
-
-
-def update_delta_w_sigmoid(x, y, w, delta_w, learning_rate):
-    o = np.dot(w, x)
-    delta_w = delta_w + learning_rate*(y - o)*sigmoid(o)*(1 - sigmoid(o))*x
-    return delta_w
+        return 0, W
 
 
 def learn(X, y, learning_rate):
+    """
+    Learning algorithm. We instantiate W with little casual numbers and delta_W (the vector with the gradients) at 0.
+    :param X:
+    :param y:
+    :param learning_rate:
+    :return: the number of iterations, W
+    """
     days, attributes = X.shape
-    # updated = np.ones(days)
-    toll = 10**-5
-    step = toll + 10
-    W = np.random.rand(X.shape[0], X.shape[1])
+    updated = np.ones(days)
+    W = np.random.random((attributes, 1))
     delta_W = np.zeros(W.shape)
-    # print("W before training: \n{}".format(W))
     iteration = 0
-    update = True
-    while update:
+    while updated.any() == 1:
         iteration += 1
-        day = np.random.randint(0, days)
-        update, delta_W[day] = update_delta_w_linear(X[day], y[day], W[day], delta_W[day], learning_rate)
-        # step = np.linalg.norm(delta_W[day])
-        W[day] = W[day] + delta_W[day]
-    # print("W after {it} iteration(s): \n{w}".format(it=iteration, w=W))
+        i = np.random.randint(0, days)
+        x_temp = np.reshape(X[i], (len(X[i]), 1))
+        updated[i], W = update_w_delta(x_temp, W, delta_W, y[i], learning_rate)
     return iteration, W
 
 
-
-def f(x):
-    """function to approximate by polynomial interpolation"""
-    return x * np.sin(x)
-
-
 if __name__ == '__main__':
-    learning_rates = np.linspace(0.0001, 0.002, 1000)
-    iterations = []
-
-
-    # generate points used to plot, 100 numbers from 0 to 10
-    x_plot = np.linspace(0, 10, 100)
-
-    # generate points and keep a subset of them
-    X = np.linspace(0, 10, 100)
-    rng = np.random.RandomState(0)
-    rng.shuffle(X)
-    X = np.sort(X[:20])
-    y = f(X)
-
-    # create matrix version of these arrays
-    X = X[:, np.newaxis]
-    X_plot = x_plot[:, np.newaxis]
-
-    colors = ['teal', 'yellowgreen', 'gold', 'blue']
-    lw = 3
-    plt.plot(
-        x_plot,
-        f(x_plot),
-        color='cornflowerblue',
-        linewidth=lw,
-        label='ground truth'
-    )
-    plt.scatter(
-        X,
-        y,
-        color='navy',
-        s=30,
-        marker='o',
-        label='training points'
-    )
-    for learning_rate in learning_rates:
+    learning_rates = np.linspace(0.02, 1, 100)
+    iterations = np.zeros(100)
+    for idx, learning_rate in enumerate(learning_rates):
         iteration, W = learn(X, y, learning_rate)
-        plt.plot(
-            X,
-            X + W,
-            # color=colors[count],
-            # linewidth=lw,
-            # label='degree {}'.format(degree)
-        )
-    # plt.plot(learning_rates, iterations)
-    # plt.xlabel("Learning rate")
-    # plt.ylabel("Iterations")
+        iterations[idx] = iteration
+        y_f = np.dot(X, W)
+        for idx, value in enumerate(y_f):
+            y_f[idx] = sigmoid(y_f[idx])
+        acc = f1_score(y, y_f)  # is always 1 since it's a perceptron!
+    plt.plot(learning_rates, iterations)
+    plt.xlabel("Learning rate")
+    plt.ylabel("Iterations")
     plt.show()
     print("W.shape: {w}\nX.transpose.shape(): {x}\ny.shape: {y}".format(w=W.shape, x=X.transpose().shape, y=y.shape))
-    print("W: {}".format(W))
+    # print(iterations)
 
 
 
