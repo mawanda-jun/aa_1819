@@ -38,7 +38,6 @@ def update_w(x, w, t, learning_rate):
     # return (1, w + x_m) if o != t else (0, w)
 
 
-
 def learn(X, y, learning_rate):
     days, attributes = X.shape
     updated = np.ones(days)

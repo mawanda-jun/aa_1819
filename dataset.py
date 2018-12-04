@@ -3,7 +3,7 @@ import numpy as np
 positive = 1  # X_true_value
 negative = 0  # X_false_value
 anyone = -1  # X_any_value
-noone = -2  # X_no_value
+noone = None  # X_no_value
 
 labels = {
     "sky": ('sunny', 'rainy'),
@@ -51,5 +51,5 @@ y = np.array([
     [string_to_num(labels[order[6]][0])],
     [string_to_num(labels[order[6]][0])],
     [string_to_num(labels[order[6]][1])],
-    [string_to_num(labels[order[6]][0])],
+    [string_to_num(labels[order[6]][0])]
 ])

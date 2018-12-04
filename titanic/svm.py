@@ -1,6 +1,10 @@
 import sklearn.svm as svm
-import numpy
-from dataset import X, y
+from titanic.dataset import X, y, X_t, y_t
+import matplotlib.pyplot as ply
 
 clf = svm.SVR()
-print(clf.fit(X, y))
+clf.fit(X, y)
+y_f = clf.predict(X_t)
+
+ply.plot(y_f)
+ply.show()
